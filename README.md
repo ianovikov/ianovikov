@@ -1,16 +1,25 @@
-## Hi there 👋
+## Портфолио - Илья Новиков
 
-<!--
-**ianovikov/ianovikov** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+Привет! 👋 Меня зовут Илья, я системный аналитик из Москвы.
 
-Here are some ideas to get you started:
+###  Обо мне
+- 🎓 Учусь на последнем курсе «Бизнес-информатики» в РТУ МИРЭА
+- 💼 Опыт в системном и бизнес-анализе, работал с промышленными заказчиками
+- 📚 Прошёл курс системного анализа в Яндекс Практикум
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+
+### 🛠️ Инструменты
+`PostgreSQL` `BPMN 2.0` `UML` `Jira` `Confluence` `Figma` `Draw.io` `Miro` `Postman` `REST API` `OpenAPI/Swagger` `Claude code`
+
+### 📂 Проекты
+
+| Проект | Описание | Инструменты |
+|---|---|---|
+| [Название проекта](ссылка-на-репозиторий) | Кратко: какая задача решалась и какой результат | SQL, BPMN |
+| [Название проекта](ссылка-на-репозиторий) | Кратко: какая задача решалась и какой результат | UML, Requirements |
+| [Название проекта](ссылка-на-репозиторий) | Кратко: какая задача решалась и какой результат | Power BI |
+
+### 📫 Контакты
+- 💬 Telegram: @username
+- ✉️ Email: mail@example.com
+- 🔗 Резюме: ссылка на hh.ru
