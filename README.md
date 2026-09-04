@@ -33,5 +33,5 @@
 ## Автор
 
 Илья Новиков — системный аналитик · Москва  
-💬Telegram: [@saugeu](https://t.me/sausgee)  
+💬Telegram: [@saugeu](https://t.me/saugeu)  
 ✉️ Email: [nia0505@yandex.ru](mailto:nia0505@yandex.ru)
