@@ -31,7 +31,8 @@ body { background:#0d1117; color:#e6edf3; font-family:-apple-system,BlinkMacSyst
 .section-label::after { content:'';flex:1;height:1px;background:#21262d; }
 
 /* ERD */
-.erd-card { background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:28px;overflow-x:auto; }
+.erd-card { background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;overflow-x:auto; }
+.erd-row-split { display:flex; flex-direction:column; gap:20px; margin-bottom:28px; }
 .erd-container { position:relative;width:820px;height:490px;min-width:820px; }
 .erd-svg { position:absolute;top:0;left:0;width:820px;height:490px;pointer-events:none;overflow:visible; }
 .erd-tbl { position:absolute;background:#1c2128;border:1px solid #373e47;border-radius:6px;overflow:hidden;font-size:11.5px;box-shadow:0 4px 16px rgba(0,0,0,.5); }
@@ -51,6 +52,16 @@ body { background:#0d1117; color:#e6edf3; font-family:-apple-system,BlinkMacSyst
 .erd-row.hl { background:rgba(240,136,62,.1); }
 .erd-row.hl .col-name { color:#f0883e; font-weight:700; }
 .erd-row.hl .col-type { color:#f0883e; opacity:.7; }
+.erd-tbl { cursor:pointer; transition:border-color .15s,box-shadow .15s; }
+.erd-tbl:hover { border-color:#58a6ff; }
+.erd-tbl.active { border-color:#58a6ff; box-shadow:0 0 0 1px #58a6ff; }
+.erd-tbl.active .erd-tbl-head { background:#152436; }
+
+/* DB DATA VIEWER */
+.db-viewer-head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:10px; gap:8px; }
+.db-viewer-title { font-size:13px; font-weight:700; color:#e6edf3; font-family:'JetBrains Mono',Consolas,monospace; }
+.db-viewer-count { font-size:11px; color:#6e7681; white-space:nowrap; }
+.db-viewer-card .tbl-wrap { max-height:360px; overflow:auto; }
 
 /* TABS */
 .tabs-card { background:#161b22;border:1px solid #30363d;border-radius:10px;overflow:hidden; }
@@ -125,16 +136,12 @@ body { background:#0d1117; color:#e6edf3; font-family:-apple-system,BlinkMacSyst
   </div>
 </header>
 
-<div class="db-bar loading" id="db-bar">
-  <span class="db-dot"></span>
-  <span id="db-bar-text">Инициализация базы данных...</span>
-</div>
-
 <div class="main">
 
   <!-- ERD -->
   <div class="section-label">Схема базы данных</div>
-  <div class="erd-card">
+  <div class="erd-row-split">
+    <div class="erd-card erd-schema-card">
     <div class="erd-container">
       <svg class="erd-svg" viewBox="0 0 820 490">
         <defs>
@@ -153,7 +160,7 @@ body { background:#0d1117; color:#e6edf3; font-family:-apple-system,BlinkMacSyst
         <path d="M 489 62 C 524 62 524 140 557 140" stroke="#3a4a5e" stroke-width="1.5" fill="none" marker-start="url(#dot-pk)" marker-end="url(#dot-fk)"/>
       </svg>
 
-      <div class="erd-tbl" style="left:0;top:48px;width:190px;">
+      <div class="erd-tbl" id="erd-tbl-users" style="left:0;top:48px;width:190px;" onclick="showTableData('users', this)">
         <div class="erd-tbl-head"><span class="tbl-tag">T</span>users</div>
         <div class="erd-row"><span class="icon-pk">🔑</span><span class="col-name">id</span><span class="col-type type-int">INT</span></div>
         <div class="erd-row"><span class="icon-no"></span><span class="col-name">name</span><span class="col-type type-var">VARCHAR</span></div>
@@ -163,7 +170,7 @@ body { background:#0d1117; color:#e6edf3; font-family:-apple-system,BlinkMacSyst
         <div class="erd-row"><span class="icon-no"></span><span class="col-name">created_at</span><span class="col-type type-ts">TIMESTAMP</span></div>
       </div>
 
-      <div class="erd-tbl" style="left:262px;top:18px;width:225px;">
+      <div class="erd-tbl" id="erd-tbl-applications" style="left:262px;top:18px;width:225px;" onclick="showTableData('applications', this)">
         <div class="erd-tbl-head"><span class="tbl-tag">T</span>applications</div>
         <div class="erd-row"><span class="icon-pk">🔑</span><span class="col-name">id</span><span class="col-type type-int">INT</span></div>
         <div class="erd-row"><span class="icon-fk">🔗</span><span class="col-name">user_id</span><span class="col-type type-int">INT</span></div>
@@ -175,7 +182,7 @@ body { background:#0d1117; color:#e6edf3; font-family:-apple-system,BlinkMacSyst
         <div class="erd-row"><span class="icon-no"></span><span class="col-name">completed_at</span><span class="col-type type-ts">TIMESTAMP</span></div>
       </div>
 
-      <div class="erd-tbl" style="left:0;top:283px;width:210px;">
+      <div class="erd-tbl" id="erd-tbl-verification_checks" style="left:0;top:283px;width:210px;" onclick="showTableData('verification_checks', this)">
         <div class="erd-tbl-head"><span class="tbl-tag">T</span>verification_checks</div>
         <div class="erd-row"><span class="icon-pk">🔑</span><span class="col-name">id</span><span class="col-type type-int">INT</span></div>
         <div class="erd-row"><span class="icon-fk">🔗</span><span class="col-name">application_id</span><span class="col-type type-int">INT</span></div>
@@ -185,7 +192,7 @@ body { background:#0d1117; color:#e6edf3; font-family:-apple-system,BlinkMacSyst
         <div class="erd-row"><span class="icon-no"></span><span class="col-name">checked_at</span><span class="col-type type-ts">TIMESTAMP</span></div>
       </div>
 
-      <div class="erd-tbl" style="left:557px;top:68px;width:205px;">
+      <div class="erd-tbl" id="erd-tbl-products" style="left:557px;top:68px;width:205px;" onclick="showTableData('products', this)">
         <div class="erd-tbl-head"><span class="tbl-tag">T</span>products</div>
         <div class="erd-row"><span class="icon-pk">🔑</span><span class="col-name">id</span><span class="col-type type-int">INT</span></div>
         <div class="erd-row"><span class="icon-fk">🔗</span><span class="col-name">application_id</span><span class="col-type type-int">INT</span></div>
@@ -193,6 +200,15 @@ body { background:#0d1117; color:#e6edf3; font-family:-apple-system,BlinkMacSyst
         <div class="erd-row"><span class="icon-no"></span><span class="col-name">product_name</span><span class="col-type type-var">VARCHAR</span></div>
         <div class="erd-row"><span class="icon-no"></span><span class="col-name">issued_at</span><span class="col-type type-ts">TIMESTAMP</span></div>
       </div>
+    </div>
+    </div>
+
+    <div class="erd-card db-viewer-card">
+      <div class="db-viewer-head">
+        <span class="db-viewer-title" id="dbv-title">—</span>
+        <span class="db-viewer-count" id="dbv-count"></span>
+      </div>
+      <div class="tbl-wrap" id="dbv-table"><div class="out-placeholder">Инициализация...</div></div>
     </div>
   </div>
 
@@ -206,8 +222,6 @@ body { background:#0d1117; color:#e6edf3; font-family:-apple-system,BlinkMacSyst
       <button class="tab-btn" onclick="switchTab(3)">Кейс 4</button>
       <button class="tab-btn" onclick="switchTab(4)">Кейс 5</button>
       <button class="tab-btn" onclick="switchTab(5)">Кейс 6</button>
-      <button class="tab-btn" onclick="switchTab(6)">Кейс 7</button>
-      <button class="tab-btn" onclick="switchTab(7)">Кейс 8</button>
     </nav>
 
     <!-- TAB 0: CASE WHEN -->
@@ -449,97 +463,6 @@ ORDER BY p.issued_at;</textarea>
       </div>
     </div>
 
-    <!-- TAB 6: CTE -->
-    <div class="tab-panel" id="tab-6">
-      <div class="case-title">Клиенты с временем онбординга ниже среднего</div>
-      <div class="case-desc">Команда продукта хочет изучить успешные паттерны: какие клиенты прошли онбординг быстрее среднего, чтобы понять, что им помогло.</div>
-      <div class="topics-row">
-        <span class="topics-lbl">Темы:</span>
-        <span class="tag">CTE (WITH)</span>
-        <span class="tag">Подзапросы</span>
-        <span class="tag">AVG</span>
-        <span class="tag">Работа с датами</span>
-        <span class="tag">JOIN</span>
-      </div>
-      <div class="two-col">
-        <div class="panel-block">
-          <div class="block-label">Запрос</div>
-          <textarea class="sql-editor" id="sql-6">WITH avg_duration AS (
-    SELECT AVG(
-        (julianday(completed_at) - julianday(created_at)) * 1440.0
-    ) AS avg_min
-    FROM applications
-    WHERE completed_at IS NOT NULL
-)
-SELECT
-    u.name    AS client_name,
-    a.channel,
-    ROUND(
-        (julianday(a.completed_at) - julianday(a.created_at)) * 1440.0, 1
-    ) AS duration_min,
-    ROUND((SELECT avg_min FROM avg_duration), 1) AS avg_min
-FROM applications a
-JOIN users u ON a.user_id = u.id
-WHERE a.completed_at IS NOT NULL
-  AND (julianday(a.completed_at) - julianday(a.created_at)) * 1440.0
-      < (SELECT avg_min FROM avg_duration)
-ORDER BY duration_min;</textarea>
-          <div class="btn-row">
-            <button class="run-btn" id="run-6" onclick="runQuery(6)" disabled>▶ Выполнить</button>
-            <button class="reset-btn" onclick="resetQuery(6)">↺ Сбросить</button>
-          </div>
-        </div>
-        <div class="panel-block">
-          <div class="block-label">Результат</div>
-          <div class="output-meta" id="meta-6"></div>
-          <div class="tbl-wrap" id="out-6"><div class="out-placeholder">Инициализация...</div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB 7: WINDOW FUNCTIONS -->
-    <div class="tab-panel" id="tab-7">
-      <div class="case-title">Рейтинг риска внутри каждого канала</div>
-      <div class="case-desc">Аналитик риска хочет видеть, как заявки ранжируются по риск-скору внутри каждого канала, и сравнить их со средним по каналу — без группировки, сохраняя все строки.</div>
-      <div class="topics-row">
-        <span class="topics-lbl">Темы:</span>
-        <span class="tag">Оконные функции</span>
-        <span class="tag">RANK() OVER</span>
-        <span class="tag">AVG() OVER</span>
-        <span class="tag">PARTITION BY</span>
-        <span class="tag">JOIN</span>
-      </div>
-      <div class="two-col">
-        <div class="panel-block">
-          <div class="block-label">Запрос</div>
-          <textarea class="sql-editor" id="sql-7">SELECT
-    u.name     AS client_name,
-    a.channel,
-    a.risk_score,
-    a.status,
-    RANK() OVER (
-        PARTITION BY a.channel
-        ORDER BY a.risk_score DESC
-    ) AS rank_in_channel,
-    ROUND(AVG(a.risk_score) OVER (
-        PARTITION BY a.channel
-    ), 1) AS avg_risk_by_channel
-FROM applications a
-JOIN users u ON a.user_id = u.id
-ORDER BY a.channel, rank_in_channel;</textarea>
-          <div class="btn-row">
-            <button class="run-btn" id="run-7" onclick="runQuery(7)" disabled>▶ Выполнить</button>
-            <button class="reset-btn" onclick="resetQuery(7)">↺ Сбросить</button>
-          </div>
-        </div>
-        <div class="panel-block">
-          <div class="block-label">Результат</div>
-          <div class="output-meta" id="meta-7"></div>
-          <div class="tbl-wrap" id="out-7"><div class="out-placeholder">Инициализация...</div></div>
-        </div>
-      </div>
-    </div>
-
   </div><!-- /tabs-card -->
 </div><!-- /main -->
 
@@ -569,18 +492,64 @@ initSqlJs({ locateFile: function(f) { return 'https://cdnjs.cloudflare.com/ajax/
     setupDatabase();
     enableButtons();
     runAllQueries();
-    var bar = document.getElementById('db-bar');
-    bar.className = 'db-bar ready';
-    document.getElementById('db-bar-text').textContent = '✓ База данных готова · 4 таблицы · 58 строк';
+    showTableData('users', document.getElementById('erd-tbl-users'));
   })
   .catch(function(e) {
-    var bar = document.getElementById('db-bar');
-    bar.className = 'db-bar error';
-    document.getElementById('db-bar-text').textContent = '✕ Не удалось загрузить SQL-движок. Проверьте подключение к интернету.';
-    for (var i = 0; i < 8; i++) {
+    document.getElementById('dbv-table').innerHTML = '<div class="out-placeholder">Ошибка загрузки движка</div>';
+    for (var i = 0; i < 6; i++) {
       document.getElementById('out-' + i).innerHTML = '<div class="out-placeholder">Ошибка загрузки движка</div>';
     }
   });
+
+// ─── ERD TABLE DATA VIEWER ─────────────────────────────────────────────────
+function showTableData(tableName, el) {
+  document.querySelectorAll('.erd-tbl').forEach(function(t) { t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+
+  document.getElementById('dbv-title').textContent = tableName;
+  var wrap = document.getElementById('dbv-table');
+  var countEl = document.getElementById('dbv-count');
+
+  if (!db) {
+    wrap.innerHTML = '<div class="out-placeholder">База данных ещё загружается...</div>';
+    countEl.textContent = '';
+    return;
+  }
+
+  try {
+    var results = db.exec('SELECT * FROM ' + tableName + ';');
+    if (!results || results.length === 0) {
+      wrap.innerHTML = '<div class="out-placeholder">Нет данных</div>';
+      countEl.textContent = '';
+      return;
+    }
+    var cols = results[0].columns;
+    var rows = results[0].values;
+    var n = rows.length;
+    var plural = n === 1 ? 'строка' : (n >= 2 && n <= 4 ? 'строки' : 'строк');
+    countEl.textContent = n + ' ' + plural;
+
+    var html = '<table class="out-tbl"><tr>';
+    cols.forEach(function(c) { html += '<th>' + escHtml(c) + '</th>'; });
+    html += '</tr>';
+    rows.forEach(function(row) {
+      html += '<tr>';
+      row.forEach(function(val) {
+        if (val === null) {
+          html += '<td class="v-null">NULL</td>';
+        } else {
+          html += '<td>' + escHtml(String(val)) + '</td>';
+        }
+      });
+      html += '</tr>';
+    });
+    html += '</table>';
+    wrap.innerHTML = html;
+  } catch (e) {
+    wrap.innerHTML = '<div class="out-error">⚠ ' + escHtml(e.message) + '</div>';
+    countEl.textContent = '';
+  }
+}
 
 function setupDatabase() {
   db.run(`
@@ -690,7 +659,7 @@ function enableButtons() {
 }
 
 function runAllQueries() {
-  for (var i = 0; i < 8; i++) runQuery(i);
+  for (var i = 0; i < 6; i++) runQuery(i);
 }
 
 // ─── RUN QUERY ───────────────────────────────────────────────────────────────
