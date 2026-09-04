@@ -11,7 +11,7 @@
 - **ПО:** Jira, Confluence, Miro, Figma, Draw.io, Postman
 - **Технологии:** PostgreSQL, REST API, JSON
 - **Документация:** BRD, ТЗ, Use Case, спецификации API
-- **Инструменты:** MS Excel, Google Workspace, Draw.io
+- **Инструменты:** MS Excel, Google Workspace, Draw.io, Claude code
 
 ## Пет-проект
 
@@ -32,6 +32,6 @@
 
 ## Автор
 
-Илья Новиков — системный/бизнес-аналитик · Москва  
+Илья Новиков — системный аналитик · Москва  
 💬Telegram: [@saugeu](https://t.me/sausgee)  
 ✉️ Email: [nia0505@yandex.ru](mailto:nia0505@yandex.ru)
