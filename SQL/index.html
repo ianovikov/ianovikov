@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Portfolio — Цифровой Онбординг</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background:#0d1117; color:#e6edf3; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; min-height:100vh; }
+
+/* HEADER */
+.site-header { background:#161b22; border-bottom:1px solid #30363d; padding:22px 40px; display:flex; align-items:flex-start; gap:20px; }
+.site-header-icon { width:40px;height:40px;background:#1f6feb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;margin-top:2px; }
+.site-header h1 { font-size:18px;font-weight:700;color:#e6edf3; }
+
+/* DB STATUS BAR */
+.db-bar { padding:7px 40px;font-size:12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #21262d; }
+.db-bar.loading { background:#161b22;color:#8b949e; }
+.db-bar.ready   { background:#0d2010;color:#3fb950; }
+.db-bar.error   { background:#2d0d0d;color:#f85149; }
+.db-dot { width:7px;height:7px;border-radius:50%;flex-shrink:0; }
+.loading .db-dot { background:#484f58;animation:pulse 1.2s ease-in-out infinite; }
+.ready  .db-dot  { background:#3fb950; }
+.error  .db-dot  { background:#f85149; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+/* MAIN */
+.main { max-width:1140px;margin:0 auto;padding:28px 24px 60px; }
+.section-label { font-size:11px;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.9px;margin-bottom:12px;display:flex;align-items:center;gap:8px; }
+.section-label::after { content:'';flex:1;height:1px;background:#21262d; }
+
+/* ERD */
+.erd-card { background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:28px;overflow-x:auto; }
+.erd-container { position:relative;width:820px;height:490px;min-width:820px; }
+.erd-svg { position:absolute;top:0;left:0;width:820px;height:490px;pointer-events:none;overflow:visible; }
+.erd-tbl { position:absolute;background:#1c2128;border:1px solid #373e47;border-radius:6px;overflow:hidden;font-size:11.5px;box-shadow:0 4px 16px rgba(0,0,0,.5); }
+.erd-tbl-head { background:#2d333b;padding:7px 10px 7px 8px;font-weight:700;font-size:12px;color:#e6edf3;border-bottom:1px solid #373e47;display:flex;align-items:center;gap:6px;white-space:nowrap; }
+.tbl-tag { width:18px;height:14px;background:#1f6feb;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0; }
+.erd-row { display:flex;align-items:center;padding:4px 10px 4px 8px;border-bottom:1px solid #22262c;gap:6px;height:26px; }
+.erd-row:last-child { border-bottom:none; }
+.icon-pk { color:#e3b341;font-size:10px;width:14px;text-align:center;flex-shrink:0; }
+.icon-fk { color:#58a6ff;font-size:10px;width:14px;text-align:center;flex-shrink:0; }
+.icon-no { width:14px;flex-shrink:0; }
+.col-name { color:#cdd9e5;flex:1;white-space:nowrap;font-size:11.5px; }
+.col-type { color:#6e7681;font-size:10px;white-space:nowrap; }
+.type-int  { color:#79c0ff; }
+.type-var  { color:#a8b3c0; }
+.type-ts   { color:#a371f7; }
+.type-date { color:#a371f7; }
+.erd-row.hl { background:rgba(240,136,62,.1); }
+.erd-row.hl .col-name { color:#f0883e; font-weight:700; }
+.erd-row.hl .col-type { color:#f0883e; opacity:.7; }
+
+/* TABS */
+.tabs-card { background:#161b22;border:1px solid #30363d;border-radius:10px;overflow:hidden; }
+.tabs-nav { display:flex;background:#0d1117;border-bottom:1px solid #30363d;overflow-x:auto;scrollbar-width:none; }
+.tabs-nav::-webkit-scrollbar { display:none; }
+.tab-btn { padding:11px 15px;background:none;border:none;border-bottom:2px solid transparent;color:#6e7681;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s,background .15s; }
+.tab-btn:hover  { color:#cdd9e5;background:#161b22; }
+.tab-btn.active { color:#58a6ff;border-bottom-color:#58a6ff;background:#161b22; }
+.tab-panel { display:none;padding:24px; }
+.tab-panel.active { display:block; }
+
+/* PANEL */
+.case-title { font-size:16px;font-weight:700;color:#e6edf3;margin-bottom:6px; }
+.case-desc  { font-size:13px;color:#8b949e;line-height:1.6;margin-bottom:14px; }
+.topics-row { display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px; }
+.topics-lbl { font-size:11px;color:#6e7681;text-transform:uppercase;letter-spacing:.5px; }
+.tag { padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid;background:#21262d;color:#8b949e;border-color:#30363d; }
+.two-col { display:grid;grid-template-columns:1fr 1fr;gap:20px; }
+@media(max-width:780px){.two-col{grid-template-columns:1fr;}}
+.block-label { font-size:11px;font-weight:600;color:#6e7681;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px; }
+
+/* SQL EDITOR */
+.sql-editor { width:100%;background:#010409;border:1px solid #30363d;border-radius:7px;padding:14px;color:#cdd9e5;font-family:'JetBrains Mono','Cascadia Code','Fira Code',Consolas,monospace;font-size:12.5px;line-height:1.65;resize:vertical;min-height:200px;outline:none;tab-size:4;transition:border-color .15s; }
+.sql-editor:focus { border-color:#388bfd; }
+
+/* BUTTONS */
+.btn-row { display:flex;gap:8px;margin-top:8px; }
+.run-btn { background:#1f6feb;border:1px solid #388bfd;color:#fff;font-size:12px;font-weight:600;padding:6px 14px;border-radius:6px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:5px; }
+.run-btn:hover:not(:disabled) { background:#388bfd; }
+.run-btn:disabled { opacity:.45;cursor:not-allowed; }
+.reset-btn { background:none;border:1px solid #30363d;color:#8b949e;font-size:12px;padding:6px 12px;border-radius:6px;cursor:pointer;transition:all .15s; }
+.reset-btn:hover { border-color:#58a6ff;color:#58a6ff; }
+
+/* OUTPUT */
+.output-meta { font-size:11.5px;color:#6e7681;margin-bottom:8px;min-height:18px; }
+.output-meta .rows-ok { color:#3fb950;font-weight:600; }
+.output-meta .exec-time { color:#484f58; }
+.tbl-wrap { overflow-x:auto;border:1px solid #30363d;border-radius:7px;min-height:60px; }
+.out-placeholder { padding:20px 16px;font-size:12px;color:#484f58;font-style:italic; }
+.out-error { padding:14px 16px;font-size:12px;color:#f85149;font-family:'JetBrains Mono',Consolas,monospace;line-height:1.5;background:#1a0808;border-radius:7px;border:1px solid #5a1a1a; }
+.out-tbl { width:100%;border-collapse:collapse;font-size:12px; }
+.out-tbl th { background:#21262d;color:#8b949e;padding:8px 12px;text-align:left;font-weight:600;border-bottom:1px solid #30363d;white-space:nowrap; }
+.out-tbl td { padding:7px 12px;border-bottom:1px solid #161b22;color:#cdd9e5;white-space:nowrap; }
+.out-tbl tr:last-child td { border-bottom:none; }
+.out-tbl tr:hover td { background:#1c2128; }
+
+/* VALUE COLORS */
+.v-num  { color:#79c0ff; }
+.v-ok   { color:#3fb950;font-weight:500; }
+.v-rej  { color:#f85149;font-weight:500; }
+.v-man  { color:#d29922;font-weight:500; }
+.v-hi   { color:#f85149;font-weight:600; }
+.v-mid  { color:#d29922;font-weight:600; }
+.v-lo   { color:#3fb950;font-weight:600; }
+.v-mob  { color:#a371f7; }
+.v-web  { color:#58a6ff; }
+.v-pass { color:#3fb950; }
+.v-fail { color:#f85149; }
+.v-pend { color:#8b949e; }
+.v-pct  { color:#e3b341;font-weight:500; }
+.v-rank { color:#a371f7;font-weight:700; }
+.v-null { color:#484f58;font-style:italic; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="site-header-icon">🏦</div>
+  <div>
+    <h1>Цифровой онбординг клиентов банка</h1>
+    <p style="font-size:13px;color:#8b949e;margin-top:6px;line-height:1.6;">Это демонстрационный файл, показывающий навыки написания запросов. Интерфейс сгенерирован ИИ и работает, как SQL-редактор. Запросы, структура базы данных и кейсы составлены мной.</p>
+  </div>
+</header>
+
+<div class="db-bar loading" id="db-bar">
+  <span class="db-dot"></span>
+  <span id="db-bar-text">Инициализация базы данных...</span>
+</div>
+
+<div class="main">
+
+  <!-- ERD -->
+  <div class="section-label">Схема базы данных</div>
+  <div class="erd-card">
+    <div class="erd-container">
+      <svg class="erd-svg" viewBox="0 0 820 490">
+        <defs>
+          <marker id="dot-pk" markerWidth="6" markerHeight="6" refX="3" refY="3">
+            <circle cx="3" cy="3" r="2.5" fill="#e3b341"/>
+          </marker>
+          <marker id="dot-fk" markerWidth="6" markerHeight="6" refX="3" refY="3">
+            <circle cx="3" cy="3" r="2.5" fill="#58a6ff"/>
+          </marker>
+          <marker id="dot-hl" markerWidth="8" markerHeight="8" refX="4" refY="4">
+            <circle cx="4" cy="4" r="3.5" fill="#f0883e"/>
+          </marker>
+        </defs>
+        <path d="M 192 97 C 226 97 226 88 262 88" stroke="#3a4a5e" stroke-width="1.5" fill="none" marker-start="url(#dot-pk)" marker-end="url(#dot-fk)"/>
+        <path d="M 262 63 C 236 63 236 354 210 354" stroke="#3a4a5e" stroke-width="1.5" fill="none" marker-start="url(#dot-pk)" marker-end="url(#dot-fk)"/>
+        <path d="M 489 62 C 524 62 524 140 557 140" stroke="#3a4a5e" stroke-width="1.5" fill="none" marker-start="url(#dot-pk)" marker-end="url(#dot-fk)"/>
+      </svg>
+
+      <div class="erd-tbl" style="left:0;top:48px;width:190px;">
+        <div class="erd-tbl-head"><span class="tbl-tag">T</span>users</div>
+        <div class="erd-row"><span class="icon-pk">🔑</span><span class="col-name">id</span><span class="col-type type-int">INT</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">name</span><span class="col-type type-var">VARCHAR</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">email</span><span class="col-type type-var">VARCHAR</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">phone_number</span><span class="col-type type-var">VARCHAR</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">birth_date</span><span class="col-type type-date">DATE</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">created_at</span><span class="col-type type-ts">TIMESTAMP</span></div>
+      </div>
+
+      <div class="erd-tbl" style="left:262px;top:18px;width:225px;">
+        <div class="erd-tbl-head"><span class="tbl-tag">T</span>applications</div>
+        <div class="erd-row"><span class="icon-pk">🔑</span><span class="col-name">id</span><span class="col-type type-int">INT</span></div>
+        <div class="erd-row"><span class="icon-fk">🔗</span><span class="col-name">user_id</span><span class="col-type type-int">INT</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">channel</span><span class="col-type type-var">VARCHAR</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">verification_method</span><span class="col-type type-var">VARCHAR</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">status</span><span class="col-type type-var">VARCHAR</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">risk_score</span><span class="col-type type-int">INT</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">created_at</span><span class="col-type type-ts">TIMESTAMP</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">completed_at</span><span class="col-type type-ts">TIMESTAMP</span></div>
+      </div>
+
+      <div class="erd-tbl" style="left:0;top:283px;width:210px;">
+        <div class="erd-tbl-head"><span class="tbl-tag">T</span>verification_checks</div>
+        <div class="erd-row"><span class="icon-pk">🔑</span><span class="col-name">id</span><span class="col-type type-int">INT</span></div>
+        <div class="erd-row"><span class="icon-fk">🔗</span><span class="col-name">application_id</span><span class="col-type type-int">INT</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">check_type</span><span class="col-type type-var">VARCHAR</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">status</span><span class="col-type type-var">VARCHAR</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">attempt_number</span><span class="col-type type-int">INT</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">checked_at</span><span class="col-type type-ts">TIMESTAMP</span></div>
+      </div>
+
+      <div class="erd-tbl" style="left:557px;top:68px;width:205px;">
+        <div class="erd-tbl-head"><span class="tbl-tag">T</span>products</div>
+        <div class="erd-row"><span class="icon-pk">🔑</span><span class="col-name">id</span><span class="col-type type-int">INT</span></div>
+        <div class="erd-row"><span class="icon-fk">🔗</span><span class="col-name">application_id</span><span class="col-type type-int">INT</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">product_type</span><span class="col-type type-var">VARCHAR</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">product_name</span><span class="col-type type-var">VARCHAR</span></div>
+        <div class="erd-row"><span class="icon-no"></span><span class="col-name">issued_at</span><span class="col-type type-ts">TIMESTAMP</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="section-label">Бизнес-кейсы</div>
+  <div class="tabs-card">
+    <nav class="tabs-nav">
+      <button class="tab-btn active" onclick="switchTab(0)">Кейс 1</button>
+      <button class="tab-btn" onclick="switchTab(1)">Кейс 2</button>
+      <button class="tab-btn" onclick="switchTab(2)">Кейс 3</button>
+      <button class="tab-btn" onclick="switchTab(3)">Кейс 4</button>
+      <button class="tab-btn" onclick="switchTab(4)">Кейс 5</button>
+      <button class="tab-btn" onclick="switchTab(5)">Кейс 6</button>
+      <button class="tab-btn" onclick="switchTab(6)">Кейс 7</button>
+      <button class="tab-btn" onclick="switchTab(7)">Кейс 8</button>
+    </nav>
+
+    <!-- TAB 0: CASE WHEN -->
+    <div class="tab-panel active" id="tab-0">
+      <div class="case-title">Классификация заявок по уровню риска</div>
+      <div class="case-desc">Оператор бэк-офиса видит список всех заявок. Нужно добавить читаемый уровень риска на основе риск-скора, чтобы быстро расставлять приоритеты при ручной верификации.</div>
+      <div class="topics-row">
+        <span class="topics-lbl">Темы:</span>
+        <span class="tag">CASE WHEN</span>
+        <span class="tag">Условные операторы</span>
+        <span class="tag">JOIN</span>
+        <span class="tag">ORDER BY</span>
+      </div>
+      <div class="two-col">
+        <div class="panel-block">
+          <div class="block-label">Запрос</div>
+          <textarea class="sql-editor" id="sql-0">SELECT
+    a.id          AS app_id,
+    u.name        AS client_name,
+    a.risk_score,
+    CASE
+        WHEN a.risk_score >= 70 THEN 'Высокий'
+        WHEN a.risk_score >= 40 THEN 'Средний'
+        ELSE 'Низкий'
+    END AS risk_level,
+    a.status
+FROM applications a
+JOIN users u ON a.user_id = u.id
+ORDER BY a.risk_score DESC;</textarea>
+          <div class="btn-row">
+            <button class="run-btn" id="run-0" onclick="runQuery(0)" disabled>▶ Выполнить</button>
+            <button class="reset-btn" onclick="resetQuery(0)">↺ Сбросить</button>
+          </div>
+        </div>
+        <div class="panel-block">
+          <div class="block-label">Результат</div>
+          <div class="output-meta" id="meta-0"></div>
+          <div class="tbl-wrap" id="out-0"><div class="out-placeholder">Инициализация...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 1: AGGREGATE -->
+    <div class="tab-panel" id="tab-1">
+      <div class="case-title">Сводная статистика по заявкам</div>
+      <div class="case-desc">Ежедневный отчёт для риск-менеджера: сколько заявок в каждом статусе и каков средний, минимальный и максимальный риск-скор.</div>
+      <div class="topics-row">
+        <span class="topics-lbl">Темы:</span>
+        <span class="tag">Агрегатные функции</span>
+        <span class="tag">COUNT</span>
+        <span class="tag">AVG</span>
+        <span class="tag">MIN / MAX</span>
+        <span class="tag">GROUP BY</span>
+      </div>
+      <div class="two-col">
+        <div class="panel-block">
+          <div class="block-label">Запрос</div>
+          <textarea class="sql-editor" id="sql-1">SELECT
+    status,
+    COUNT(*)                  AS total_apps,
+    ROUND(AVG(risk_score), 1) AS avg_risk,
+    MIN(risk_score)           AS min_risk,
+    MAX(risk_score)           AS max_risk
+FROM applications
+GROUP BY status;</textarea>
+          <div class="btn-row">
+            <button class="run-btn" id="run-1" onclick="runQuery(1)" disabled>▶ Выполнить</button>
+            <button class="reset-btn" onclick="resetQuery(1)">↺ Сбросить</button>
+          </div>
+        </div>
+        <div class="panel-block">
+          <div class="block-label">Результат</div>
+          <div class="output-meta" id="meta-1"></div>
+          <div class="tbl-wrap" id="out-1"><div class="out-placeholder">Инициализация...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: GROUP BY -->
+    <div class="tab-panel" id="tab-2">
+      <div class="case-title">Конверсия по каналу и методу верификации</div>
+      <div class="case-desc">Продуктовый аналитик хочет понять, какой канал и метод верификации даёт наибольшую конверсию в одобрение.</div>
+      <div class="topics-row">
+        <span class="topics-lbl">Темы:</span>
+        <span class="tag">GROUP BY</span>
+        <span class="tag">COUNT</span>
+        <span class="tag">CASE WHEN</span>
+        <span class="tag">Процентный расчёт</span>
+        <span class="tag">ORDER BY</span>
+      </div>
+      <div class="two-col">
+        <div class="panel-block">
+          <div class="block-label">Запрос</div>
+          <textarea class="sql-editor" id="sql-2">SELECT
+    channel,
+    verification_method,
+    COUNT(*) AS total_apps,
+    COUNT(CASE WHEN status = 'approved' THEN 1 END) AS approved_count,
+    ROUND(
+        100.0 * COUNT(CASE WHEN status = 'approved' THEN 1 END)
+        / COUNT(*),
+        1
+    ) AS approval_rate_pct
+FROM applications
+GROUP BY channel, verification_method
+ORDER BY approval_rate_pct DESC;</textarea>
+          <div class="btn-row">
+            <button class="run-btn" id="run-2" onclick="runQuery(2)" disabled>▶ Выполнить</button>
+            <button class="reset-btn" onclick="resetQuery(2)">↺ Сбросить</button>
+          </div>
+        </div>
+        <div class="panel-block">
+          <div class="block-label">Результат</div>
+          <div class="output-meta" id="meta-2"></div>
+          <div class="tbl-wrap" id="out-2"><div class="out-placeholder">Инициализация...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: HAVING -->
+    <div class="tab-panel" id="tab-3">
+      <div class="case-title">Проблемные этапы верификации</div>
+      <div class="case-desc">Найти типы проверок с процентом неуспеха выше 20% — кандидаты для оптимизации UX или изменения порогов риск-политики.</div>
+      <div class="topics-row">
+        <span class="topics-lbl">Темы:</span>
+        <span class="tag">HAVING</span>
+        <span class="tag">GROUP BY</span>
+        <span class="tag">SUM / COUNT</span>
+        <span class="tag">CASE WHEN</span>
+        <span class="tag">Фильтрация агрегатов</span>
+      </div>
+      <div class="two-col">
+        <div class="panel-block">
+          <div class="block-label">Запрос</div>
+          <textarea class="sql-editor" id="sql-3">SELECT
+    check_type,
+    COUNT(*) AS total_checks,
+    SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_count,
+    ROUND(
+        100.0 * SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END)
+        / COUNT(*),
+        1
+    ) AS fail_rate_pct
+FROM verification_checks
+GROUP BY check_type
+HAVING
+    SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) * 100.0
+    / COUNT(*) > 20
+ORDER BY fail_rate_pct DESC;</textarea>
+          <div class="btn-row">
+            <button class="run-btn" id="run-3" onclick="runQuery(3)" disabled>▶ Выполнить</button>
+            <button class="reset-btn" onclick="resetQuery(3)">↺ Сбросить</button>
+          </div>
+        </div>
+        <div class="panel-block">
+          <div class="block-label">Результат</div>
+          <div class="output-meta" id="meta-3"></div>
+          <div class="tbl-wrap" id="out-3"><div class="out-placeholder">Инициализация...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: ORDER BY -->
+    <div class="tab-panel" id="tab-4">
+      <div class="case-title">Очередь на ручную проверку</div>
+      <div class="case-desc">Верификатор открывает дашборд и видит заявки, требующие ручного рассмотрения, отсортированные по убыванию риска — самые опасные первыми.</div>
+      <div class="topics-row">
+        <span class="topics-lbl">Темы:</span>
+        <span class="tag">ORDER BY</span>
+        <span class="tag">Многоуровневая сортировка</span>
+        <span class="tag">WHERE IN</span>
+        <span class="tag">JOIN</span>
+      </div>
+      <div class="two-col">
+        <div class="panel-block">
+          <div class="block-label">Запрос</div>
+          <textarea class="sql-editor" id="sql-4">SELECT
+    u.name              AS client_name,
+    a.channel,
+    a.verification_method,
+    a.risk_score,
+    a.status,
+    a.created_at
+FROM applications a
+JOIN users u ON a.user_id = u.id
+WHERE a.status IN ('manual_review', 'rejected')
+ORDER BY a.risk_score DESC, a.created_at ASC;</textarea>
+          <div class="btn-row">
+            <button class="run-btn" id="run-4" onclick="runQuery(4)" disabled>▶ Выполнить</button>
+            <button class="reset-btn" onclick="resetQuery(4)">↺ Сбросить</button>
+          </div>
+        </div>
+        <div class="panel-block">
+          <div class="block-label">Результат</div>
+          <div class="output-meta" id="meta-4"></div>
+          <div class="tbl-wrap" id="out-4"><div class="out-placeholder">Инициализация...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: JOIN -->
+    <div class="tab-panel" id="tab-5">
+      <div class="case-title">Клиенты с выданными продуктами</div>
+      <div class="case-desc">CRM-отдел запрашивает список клиентов, успешно прошедших онбординг, с информацией о выданных банковских продуктах для последующей коммуникации и up-sell.</div>
+      <div class="topics-row">
+        <span class="topics-lbl">Темы:</span>
+        <span class="tag">JOIN</span>
+        <span class="tag">LEFT JOIN</span>
+        <span class="tag">Несколько таблиц</span>
+        <span class="tag">WHERE</span>
+        <span class="tag">ORDER BY</span>
+      </div>
+      <div class="two-col">
+        <div class="panel-block">
+          <div class="block-label">Запрос</div>
+          <textarea class="sql-editor" id="sql-5">SELECT
+    u.name             AS client_name,
+    u.phone_number,
+    a.channel,
+    a.verification_method,
+    p.product_name,
+    p.product_type,
+    p.issued_at
+FROM users u
+JOIN applications a   ON u.id = a.user_id
+LEFT JOIN products p  ON a.id = p.application_id
+WHERE a.status = 'approved'
+ORDER BY p.issued_at;</textarea>
+          <div class="btn-row">
+            <button class="run-btn" id="run-5" onclick="runQuery(5)" disabled>▶ Выполнить</button>
+            <button class="reset-btn" onclick="resetQuery(5)">↺ Сбросить</button>
+          </div>
+        </div>
+        <div class="panel-block">
+          <div class="block-label">Результат</div>
+          <div class="output-meta" id="meta-5"></div>
+          <div class="tbl-wrap" id="out-5"><div class="out-placeholder">Инициализация...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: CTE -->
+    <div class="tab-panel" id="tab-6">
+      <div class="case-title">Клиенты с временем онбординга ниже среднего</div>
+      <div class="case-desc">Команда продукта хочет изучить успешные паттерны: какие клиенты прошли онбординг быстрее среднего, чтобы понять, что им помогло.</div>
+      <div class="topics-row">
+        <span class="topics-lbl">Темы:</span>
+        <span class="tag">CTE (WITH)</span>
+        <span class="tag">Подзапросы</span>
+        <span class="tag">AVG</span>
+        <span class="tag">Работа с датами</span>
+        <span class="tag">JOIN</span>
+      </div>
+      <div class="two-col">
+        <div class="panel-block">
+          <div class="block-label">Запрос</div>
+          <textarea class="sql-editor" id="sql-6">WITH avg_duration AS (
+    SELECT AVG(
+        (julianday(completed_at) - julianday(created_at)) * 1440.0
+    ) AS avg_min
+    FROM applications
+    WHERE completed_at IS NOT NULL
+)
+SELECT
+    u.name    AS client_name,
+    a.channel,
+    ROUND(
+        (julianday(a.completed_at) - julianday(a.created_at)) * 1440.0, 1
+    ) AS duration_min,
+    ROUND((SELECT avg_min FROM avg_duration), 1) AS avg_min
+FROM applications a
+JOIN users u ON a.user_id = u.id
+WHERE a.completed_at IS NOT NULL
+  AND (julianday(a.completed_at) - julianday(a.created_at)) * 1440.0
+      < (SELECT avg_min FROM avg_duration)
+ORDER BY duration_min;</textarea>
+          <div class="btn-row">
+            <button class="run-btn" id="run-6" onclick="runQuery(6)" disabled>▶ Выполнить</button>
+            <button class="reset-btn" onclick="resetQuery(6)">↺ Сбросить</button>
+          </div>
+        </div>
+        <div class="panel-block">
+          <div class="block-label">Результат</div>
+          <div class="output-meta" id="meta-6"></div>
+          <div class="tbl-wrap" id="out-6"><div class="out-placeholder">Инициализация...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 7: WINDOW FUNCTIONS -->
+    <div class="tab-panel" id="tab-7">
+      <div class="case-title">Рейтинг риска внутри каждого канала</div>
+      <div class="case-desc">Аналитик риска хочет видеть, как заявки ранжируются по риск-скору внутри каждого канала, и сравнить их со средним по каналу — без группировки, сохраняя все строки.</div>
+      <div class="topics-row">
+        <span class="topics-lbl">Темы:</span>
+        <span class="tag">Оконные функции</span>
+        <span class="tag">RANK() OVER</span>
+        <span class="tag">AVG() OVER</span>
+        <span class="tag">PARTITION BY</span>
+        <span class="tag">JOIN</span>
+      </div>
+      <div class="two-col">
+        <div class="panel-block">
+          <div class="block-label">Запрос</div>
+          <textarea class="sql-editor" id="sql-7">SELECT
+    u.name     AS client_name,
+    a.channel,
+    a.risk_score,
+    a.status,
+    RANK() OVER (
+        PARTITION BY a.channel
+        ORDER BY a.risk_score DESC
+    ) AS rank_in_channel,
+    ROUND(AVG(a.risk_score) OVER (
+        PARTITION BY a.channel
+    ), 1) AS avg_risk_by_channel
+FROM applications a
+JOIN users u ON a.user_id = u.id
+ORDER BY a.channel, rank_in_channel;</textarea>
+          <div class="btn-row">
+            <button class="run-btn" id="run-7" onclick="runQuery(7)" disabled>▶ Выполнить</button>
+            <button class="reset-btn" onclick="resetQuery(7)">↺ Сбросить</button>
+          </div>
+        </div>
+        <div class="panel-block">
+          <div class="block-label">Результат</div>
+          <div class="output-meta" id="meta-7"></div>
+          <div class="tbl-wrap" id="out-7"><div class="out-placeholder">Инициализация...</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tabs-card -->
+</div><!-- /main -->
+
+<script>
+// ─── INIT ────────────────────────────────────────────────────────────────────
+let db = null;
+const origQueries = {};
+
+document.querySelectorAll('.sql-editor').forEach(function(ta) {
+  origQueries[ta.id] = ta.value;
+});
+
+function switchTab(idx) {
+  document.querySelectorAll('.tab-btn').forEach(function(b, i) { b.classList.toggle('active', i === idx); });
+  document.querySelectorAll('.tab-panel').forEach(function(p, i) { p.classList.toggle('active', i === idx); });
+}
+
+function resetQuery(idx) {
+  var id = 'sql-' + idx;
+  if (origQueries[id]) document.getElementById(id).value = origQueries[id];
+}
+
+// ─── SQL.JS SETUP ────────────────────────────────────────────────────────────
+initSqlJs({ locateFile: function(f) { return 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/' + f; } })
+  .then(function(SQL) {
+    db = new SQL.Database();
+    setupDatabase();
+    enableButtons();
+    runAllQueries();
+    var bar = document.getElementById('db-bar');
+    bar.className = 'db-bar ready';
+    document.getElementById('db-bar-text').textContent = '✓ База данных готова · 4 таблицы · 58 строк';
+  })
+  .catch(function(e) {
+    var bar = document.getElementById('db-bar');
+    bar.className = 'db-bar error';
+    document.getElementById('db-bar-text').textContent = '✕ Не удалось загрузить SQL-движок. Проверьте подключение к интернету.';
+    for (var i = 0; i < 8; i++) {
+      document.getElementById('out-' + i).innerHTML = '<div class="out-placeholder">Ошибка загрузки движка</div>';
+    }
+  });
+
+function setupDatabase() {
+  db.run(`
+    CREATE TABLE users (
+      id INTEGER PRIMARY KEY,
+      name TEXT,
+      email TEXT,
+      phone_number TEXT,
+      birth_date TEXT,
+      created_at TEXT
+    );
+    INSERT INTO users VALUES
+      (1,'Иванов Алексей','ivanov@mail.ru','+79001234567','1990-03-15','2025-01-05 09:50:00'),
+      (2,'Петрова Мария','petrova@gmail.com','+79167890123','1985-11-22','2025-01-07 14:25:00'),
+      (3,'Сидоров Дмитрий','sidorov@yandex.ru','+79234567890','1992-07-08','2025-01-08 09:10:00'),
+      (4,'Козлова Анна','kozlova@mail.ru','+79345678901','1998-04-01','2025-01-09 15:55:00'),
+      (5,'Морозов Игорь','morozov@gmail.com','+79456789012','1975-09-30','2025-01-10 11:25:00'),
+      (6,'Новикова Елена','novikova@mail.ru','+79567890123','2000-12-15','2025-01-12 12:55:00'),
+      (7,'Соколов Роман','sokolov@yandex.ru','+79678901234','1987-02-14','2025-01-13 09:55:00'),
+      (8,'Лебедева Ольга','lebedeva@gmail.com','+79789012345','1993-06-25','2025-01-14 15:25:00');
+
+    CREATE TABLE applications (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER,
+      channel TEXT,
+      verification_method TEXT,
+      status TEXT,
+      risk_score INTEGER,
+      created_at TEXT,
+      completed_at TEXT
+    );
+    INSERT INTO applications VALUES
+      (1,1,'mobile','passport','approved',25,'2025-01-05 10:00:00','2025-01-05 10:04:00'),
+      (2,2,'web','EBS','approved',18,'2025-01-07 14:30:00','2025-01-07 14:33:00'),
+      (3,3,'mobile','passport','manual_review',65,'2025-01-08 09:15:00',NULL),
+      (4,4,'web','EBS','approved',12,'2025-01-09 16:00:00','2025-01-09 16:02:00'),
+      (5,5,'mobile','passport','rejected',82,'2025-01-10 11:30:00',NULL),
+      (6,6,'mobile','EBS','approved',30,'2025-01-12 13:00:00','2025-01-12 13:05:00'),
+      (7,7,'web','passport','manual_review',55,'2025-01-13 10:00:00',NULL),
+      (8,8,'web','EBS','approved',22,'2025-01-14 15:30:00','2025-01-14 15:32:00');
+
+    CREATE TABLE verification_checks (
+      id INTEGER PRIMARY KEY,
+      application_id INTEGER,
+      check_type TEXT,
+      status TEXT,
+      attempt_number INTEGER,
+      checked_at TEXT
+    );
+    INSERT INTO verification_checks VALUES
+      (1,1,'OTP','passed',1,'2025-01-05 10:00:05'),
+      (2,1,'passport_mvd','passed',1,'2025-01-05 10:01:00'),
+      (3,1,'biometry','passed',1,'2025-01-05 10:02:00'),
+      (4,1,'aml','passed',1,'2025-01-05 10:03:00'),
+      (5,1,'scoring','passed',1,'2025-01-05 10:03:30'),
+      (6,2,'OTP','passed',1,'2025-01-07 14:30:05'),
+      (7,2,'biometry','passed',1,'2025-01-07 14:31:00'),
+      (8,2,'aml','passed',1,'2025-01-07 14:32:00'),
+      (9,2,'scoring','passed',1,'2025-01-07 14:32:30'),
+      (10,3,'OTP','passed',1,'2025-01-08 09:15:05'),
+      (11,3,'passport_mvd','passed',1,'2025-01-08 09:16:00'),
+      (12,3,'biometry','failed',1,'2025-01-08 09:17:00'),
+      (13,3,'biometry','failed',2,'2025-01-08 09:18:00'),
+      (14,3,'biometry','failed',3,'2025-01-08 09:19:00'),
+      (15,3,'aml','passed',1,'2025-01-08 09:20:00'),
+      (16,3,'scoring','pending',1,'2025-01-08 09:20:30'),
+      (17,4,'OTP','passed',1,'2025-01-09 16:00:05'),
+      (18,4,'biometry','passed',1,'2025-01-09 16:01:00'),
+      (19,4,'aml','passed',1,'2025-01-09 16:01:30'),
+      (20,4,'scoring','passed',1,'2025-01-09 16:01:50'),
+      (21,5,'OTP','passed',1,'2025-01-10 11:30:05'),
+      (22,5,'passport_mvd','failed',1,'2025-01-10 11:31:00'),
+      (23,5,'aml','failed',1,'2025-01-10 11:32:00'),
+      (24,6,'OTP','passed',1,'2025-01-12 13:00:05'),
+      (25,6,'biometry','passed',1,'2025-01-12 13:01:00'),
+      (26,6,'aml','passed',1,'2025-01-12 13:02:00'),
+      (27,6,'scoring','passed',1,'2025-01-12 13:02:30'),
+      (28,7,'OTP','passed',1,'2025-01-13 10:00:05'),
+      (29,7,'passport_mvd','passed',1,'2025-01-13 10:01:00'),
+      (30,7,'biometry','failed',1,'2025-01-13 10:02:00'),
+      (31,7,'biometry','passed',2,'2025-01-13 10:03:00'),
+      (32,7,'aml','passed',1,'2025-01-13 10:04:00'),
+      (33,7,'scoring','failed',1,'2025-01-13 10:04:30'),
+      (34,8,'OTP','passed',1,'2025-01-14 15:30:05'),
+      (35,8,'biometry','passed',1,'2025-01-14 15:31:00'),
+      (36,8,'aml','passed',1,'2025-01-14 15:31:30'),
+      (37,8,'scoring','passed',1,'2025-01-14 15:31:50');
+
+    CREATE TABLE products (
+      id INTEGER PRIMARY KEY,
+      application_id INTEGER,
+      product_type TEXT,
+      product_name TEXT,
+      issued_at TEXT
+    );
+    INSERT INTO products VALUES
+      (1,1,'debit_card','Дебетовая карта Мир','2025-01-05'),
+      (2,2,'debit_card','Дебетовая карта Мир','2025-01-07'),
+      (3,4,'debit_card','Дебетовая карта Мир','2025-01-09'),
+      (4,6,'debit_card','Дебетовая карта Мир','2025-01-12'),
+      (5,8,'debit_card','Дебетовая карта Мир','2025-01-14');
+  `);
+}
+
+function enableButtons() {
+  document.querySelectorAll('.run-btn').forEach(function(b) { b.disabled = false; });
+}
+
+function runAllQueries() {
+  for (var i = 0; i < 8; i++) runQuery(i);
+}
+
+// ─── RUN QUERY ───────────────────────────────────────────────────────────────
+function runQuery(idx) {
+  if (!db) return;
+  var sql = document.getElementById('sql-' + idx).value.trim();
+  var outEl  = document.getElementById('out-' + idx);
+  var metaEl = document.getElementById('meta-' + idx);
+  var btn    = document.getElementById('run-' + idx);
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Выполняется...';
+  metaEl.innerHTML = '';
+  outEl.innerHTML = '<div class="out-placeholder">Выполняется запрос...</div>';
+
+  setTimeout(function() {
+    try {
+      var t0 = performance.now();
+      var results = db.exec(sql);
+      var ms = (performance.now() - t0).toFixed(1);
+      renderOutput(idx, results, ms);
+    } catch(e) {
+      outEl.innerHTML = '<div class="out-error">⚠ ' + escHtml(e.message) + '</div>';
+      metaEl.innerHTML = '<span style="color:#f85149">Ошибка выполнения</span>';
+    }
+    btn.disabled = false;
+    btn.textContent = '▶ Выполнить';
+  }, 30);
+}
+
+function renderOutput(idx, results, ms) {
+  var outEl  = document.getElementById('out-' + idx);
+  var metaEl = document.getElementById('meta-' + idx);
+
+  if (!results || results.length === 0) {
+    outEl.innerHTML = '<div class="out-placeholder">Запрос выполнен, данные не возвращены</div>';
+    metaEl.innerHTML = 'Возвращено <span class="rows-ok">0 строк</span> <span class="exec-time">· ' + ms + ' мс</span>';
+    return;
+  }
+
+  var cols   = results[0].columns;
+  var rows   = results[0].values;
+  var n      = rows.length;
+  var plural = n === 1 ? 'строка' : (n >= 2 && n <= 4 ? 'строки' : 'строк');
+
+  metaEl.innerHTML = 'Возвращено <span class="rows-ok">' + n + ' ' + plural + '</span> <span class="exec-time">· ' + ms + ' мс</span>';
+
+  var html = '<table class="out-tbl"><tr>';
+  cols.forEach(function(c) { html += '<th>' + escHtml(c) + '</th>'; });
+  html += '</tr>';
+
+  rows.forEach(function(row) {
+    html += '<tr>';
+    row.forEach(function(val, i) {
+      if (val === null) {
+        html += '<td class="v-null">NULL</td>';
+      } else {
+        var cls = getCellClass(cols[i], val);
+        html += '<td class="' + cls + '">' + escHtml(String(val)) + '</td>';
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</table>';
+  outEl.innerHTML = html;
+}
+
+function getCellClass(col, val) {
+  var c = col.toLowerCase();
+  var v = String(val);
+  if (c === 'status') {
+    if (v === 'approved')      return 'v-ok';
+    if (v === 'rejected')      return 'v-rej';
+    if (v === 'manual_review') return 'v-man';
+    if (v === 'passed')        return 'v-pass';
+    if (v === 'failed')        return 'v-fail';
+    if (v === 'pending')       return 'v-pend';
+  }
+  if (c === 'channel') {
+    if (v === 'mobile') return 'v-mob';
+    if (v === 'web')    return 'v-web';
+  }
+  if (c === 'risk_level') {
+    if (v === 'Высокий') return 'v-hi';
+    if (v === 'Средний') return 'v-mid';
+    if (v === 'Низкий')  return 'v-lo';
+  }
+  if (c === 'rank_in_channel') return 'v-rank';
+  if (['approval_rate_pct','fail_rate_pct'].includes(c)) return 'v-pct';
+  if (typeof val === 'number') return 'v-num';
+  return '';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,426 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Digital Onboarding API",
+    "version": "1.0.0",
+    "description": "API для процесса цифрового онбординга новых клиентов банка. Покрывает три ключевых шага из BRD \"Цифровой онбординг клиентов банка\": регистрацию по номеру телефона (FR-01, FR-02), верификацию личности через Единую биометрическую систему (FR-04) и открытие счёта с выпуском виртуальной карты.\nЭто демонстрационный документ для портфолио бизнес/системного аналитика. Любые совпадения с реальными API случайны.\n"
+  },
+  "servers": [
+    {
+      "url": "https://api.bank.example/v1",
+      "description": "Production"
+    },
+    {
+      "url": "https://sandbox-api.bank.example/v1",
+      "description": "Тестовое окружение"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Registration",
+      "description": "Регистрация клиента по номеру телефона"
+    },
+    {
+      "name": "Verification",
+      "description": "Верификация личности"
+    },
+    {
+      "name": "Accounts",
+      "description": "Открытие счёта и выпуск карты"
+    }
+  ],
+  "paths": {
+    "/registration/otp": {
+      "post": {
+        "tags": [
+          "Registration"
+        ],
+        "summary": "Отправить одноразовый код подтверждения (OTP)",
+        "description": "Реализует FR-01 и FR-02 из BRD: клиент вводит номер телефона, система отправляет одноразовый код по SMS для подтверждения контакта.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OtpRequest"
+              },
+              "example": {
+                "phoneNumber": "+79991234567"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Код отправлен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OtpResponse"
+                },
+                "example": {
+                  "requestId": "a1b2c3d4-0001",
+                  "expiresInSeconds": 300
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "description": "Превышен лимит запросов кода (анти-фрод защита)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "code": "OTP_RATE_LIMIT_EXCEEDED",
+                  "message": "Слишком много попыток. Повторите через 60 секунд."
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/verification/ebs": {
+      "post": {
+        "tags": [
+          "Verification"
+        ],
+        "summary": "Верифицировать клиента через Единую биометрическую систему",
+        "description": "Реализует FR-04 из BRD: верификация личности клиента методом биометрии через ЕБС (Госуслуги.Биометрия). Система направляет биометрический образец во внешний сервис ЕБС и получает результат сверки. Согласно BPMN-схеме процесса допускается не более 3 попыткк проверки (правило BR-08).\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbsVerificationRequest"
+              },
+              "example": {
+                "sessionId": "a1b2c3d4-0001",
+                "biometricSampleId": "smpl_98765",
+                "attemptNumber": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат верификации получен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbsVerificationResponse"
+                },
+                "example": {
+                  "status": "MATCHED",
+                  "confidenceScore": 0.97
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "409": {
+            "description": "Превышено количество попыток верификации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "code": "MAX_ATTEMPTS_EXCEEDED",
+                  "message": "Превышено максимальное количество попыток верификации."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Биометрический образец не распознан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "code": "BIOMETRIC_NOT_RECOGNIZED",
+                  "message": "Видео не распознано. Повторите попытку."
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Внешняя система ЕБС не ответила в установленный таймаут",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "code": "EBS_TIMEOUT",
+                  "message": "Сервис ЕБС временно недоступен. Попробуйте позже."
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/accounts": {
+      "post": {
+        "tags": [
+          "Accounts"
+        ],
+        "summary": "Открыть счёт и выпустить виртуальную карту",
+        "description": "Финальный шаг онбординга. Вызывается после успешной верификации и заполнения анкеты. Инициирует открытие текущего счёта и выпуск виртуальной дебетовой карты в АБС/Процессинге.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountOpenRequest"
+              },
+              "example": {
+                "sessionId": "a1b2c3d4-0001",
+                "productCode": "CURRENT_ACCOUNT_RUB"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Счёт открыт, карта выпущена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountOpenResponse"
+                },
+                "example": {
+                  "accountId": "acc_55001234",
+                  "accountNumber": "40817810000000012345",
+                  "cardId": "card_77002345",
+                  "cardStatus": "ISSUED_VIRTUAL"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "403": {
+            "description": "Клиент не прошёл предварительную проверку",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "code": "COMPLIANCE_CHECK_FAILED",
+                  "message": "Заявка отклонена по результатам проверки ПОД/ФТ."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Ошибка при обращении к АБС/Процессингу",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "code": "CORE_BANKING_ERROR",
+                  "message": "Не удалось открыть счёт в АБС. Попробуйте позже."
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Все запросы должны содержать заголовок Authorization: Bearer <token>. Токен выдаётся при инициализации сессии онбординга.\n"
+      }
+    },
+    "responses": {
+      "ValidationError": {
+        "description": "Некорректные входные данные",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "code": "VALIDATION_ERROR",
+              "message": "Поле phoneNumber обязательно и должно быть в формате E.164."
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "Внутренняя ошибка сервера",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "code": "INTERNAL_ERROR",
+              "message": "Внутренняя ошибка сервера. Обратитесь в поддержку."
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "OtpRequest": {
+        "type": "object",
+        "required": [
+          "phoneNumber"
+        ],
+        "properties": {
+          "phoneNumber": {
+            "type": "string",
+            "description": "Номер телефона в формате E.164",
+            "example": "+79991234567"
+          }
+        }
+      },
+      "OtpResponse": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "description": "Идентификатор сессии регистрации, используется в следующих шагах"
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "example": 300
+          }
+        }
+      },
+      "EbsVerificationRequest": {
+        "type": "object",
+        "required": [
+          "sessionId",
+          "biometricSampleId",
+          "attemptNumber"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "biometricSampleId": {
+            "type": "string",
+            "description": "Идентификатор биометрического образца, загруженного клиентом"
+          },
+          "attemptNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3,
+            "description": "Номер попытки верификации"
+          }
+        }
+      },
+      "EbsVerificationResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "MATCHED",
+              "NOT_MATCHED"
+            ]
+          },
+          "confidenceScore": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      },
+      "AccountOpenRequest": {
+        "type": "object",
+        "required": [
+          "sessionId",
+          "productCode"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "productCode": {
+            "type": "string",
+            "enum": [
+              "CURRENT_ACCOUNT_RUB"
+            ],
+            "description": "Код банковского продукта, открываемого клиенту"
+          }
+        }
+      },
+      "AccountOpenResponse": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "accountNumber": {
+            "type": "string"
+          },
+          "cardId": {
+            "type": "string"
+          },
+          "cardStatus": {
+            "type": "string",
+            "enum": [
+              "ISSUED_VIRTUAL",
+              "PENDING_PHYSICAL"
+            ]
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Машиночитаемый код ошибки"
+          },
+          "message": {
+            "type": "string",
+            "description": "Человекочитаемое описание ошибки"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}
